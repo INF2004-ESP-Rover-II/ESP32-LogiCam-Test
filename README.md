@@ -5,9 +5,11 @@ board's USB-OTG port), streaming MJPEG video over Wi-Fi, with a Python-side
 ArUco marker detection pipeline reading that stream.
 
 This replaces an earlier attempt using the ESP32's built-in camera module
-(ESP32-CAM / OV5640), which had persistent focus/blur issues that prevented
-reliable marker detection. Routing a real USB webcam through the board's
-USB-OTG port gives much sharper images.
+(ESP32-CAM / OV5640), which could not detect markers reliably at range.
+Although the sensor is rated at 3MP/5MP, the frames actually streamed over
+Wi-Fi were much smaller, so each marker covered too few pixels to decode.
+Testing ruled out image blur as the cause. Routing a USB webcam through the
+board's USB-OTG port gives frames with enough pixels per marker for detection.
 
 ## Why ESP-IDF instead of the Arduino IDE?
 
