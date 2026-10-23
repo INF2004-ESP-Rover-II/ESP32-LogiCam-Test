@@ -1,0 +1,407 @@
+<title>LogiCam Distance and Bearing</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: a single lab-sheet column; one wide pipeline diagram, then numbered procedure cards (a real sequence), each with its own small diagram. */
+:root {
+  --bg: #f3f5f4;
+  --panel: #ffffff;
+  --ink: #17201e;
+  --muted: #56645f;
+  --line: #c9d3cf;
+  --accent: #0d6b62;      /* solder-mask green */
+  --accent-soft: #dcefeb;
+  --amber: #b86a00;       /* status LED */
+  --amber-soft: #fbecd5;
+  --code-bg: #e8eeec;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1514; --panel: #172120; --ink: #e3ebe8; --muted: #93a39e; --line: #2c3a37;
+  --accent: #4fc2b3; --accent-soft: #173a36; --amber: #f0a54a; --amber-soft: #3a2a14; --code-bg: #1e2a28;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1514; --panel: #172120; --ink: #e3ebe8; --muted: #93a39e; --line: #2c3a37;
+  --accent: #4fc2b3; --accent-soft: #173a36; --amber: #f0a54a; --amber-soft: #3a2a14; --code-bg: #1e2a28;
+  color-scheme: dark; }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: 0.005em; }
+h1 { font-size: 2.1rem; line-height: 1.1; }
+h2 { font-size: 1.35rem; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font-family: var(--f-mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+header { display: grid; gap: 10px; }
+header p { color: var(--muted); }
+code, pre { font-family: var(--f-mono); font-size: 0.84rem; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--code-bg); padding: 10px 12px; border-radius: 6px; margin: 0; overflow-x: auto; white-space: pre; }
+.diagram { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; height: auto; }
+#pipeline svg { min-width: 760px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 0.8rem; color: var(--muted); margin-top: 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
+
+.steps { display: grid; gap: 18px; counter-reset: step; }
+.step { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px;
+  display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 14px; }
+.num { font-family: var(--f-display); font-weight: 700; font-size: 1.3rem; color: var(--accent);
+  width: 36px; height: 36px; border: 2px solid var(--accent); border-radius: 50%; display: grid; place-items: center; }
+.body { display: grid; gap: 10px; min-width: 0; }
+.where { font-family: var(--f-mono); font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 16px; align-items: start; }
+.split .mini { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+.split .mini svg { display: block; width: 100%; height: auto; }
+ul.tight { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.done { background: var(--accent-soft); border-radius: 6px; padding: 8px 12px; font-size: 0.88rem; }
+.done b { color: var(--accent); }
+.warn { background: var(--amber-soft); border-radius: 6px; padding: 8px 12px; font-size: 0.88rem; }
+.warn b { color: var(--amber); }
+kbd { font-family: var(--f-mono); font-size: 0.78rem; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--panel); }
+table { border-collapse: collapse; font-size: 0.86rem; width: 100%; }
+td, th { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--f-mono); font-weight: 500; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+td:first-child { font-family: var(--f-mono); white-space: nowrap; }
+.tbl { overflow-x: auto; }
+
+/* SVG roles */
+.s-box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+.s-acc { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+.s-amb { fill: var(--amber-soft); stroke: var(--amber); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.s-hw  { fill: var(--code-bg); stroke: var(--muted); stroke-width: 1.5; }
+.s-arrow { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+.s-arrow-acc { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+.s-dash { stroke: var(--muted); stroke-width: 1.2; fill: none; stroke-dasharray: 4 4; }
+.t { fill: var(--ink); font-family: var(--f-body); font-size: 13px; }
+.t-b { fill: var(--ink); font-family: var(--f-display); font-weight: 700; font-size: 14px; }
+.t-m { fill: var(--muted); font-family: var(--f-mono); font-size: 11px; }
+.t-acc { fill: var(--accent); font-family: var(--f-mono); font-size: 11px; }
+.t-amb { fill: var(--amber); font-family: var(--f-mono); font-size: 11px; }
+.f-ink { fill: var(--ink); }
+.f-acc { fill: var(--accent); }
+.f-amb { fill: var(--amber); }
+.f-muted { fill: var(--muted); }
+.f-panel { fill: var(--panel); }
+
+@media (max-width: 720px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .step { grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 1.7rem; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">INF2004 · B3 camera subsystem · ESP32-S3 + Logitech UVC</div>
+    <h1>Distance and bearing from ArUco markers</h1>
+    <p>How the pieces connect, then each part in order: what to run, where, what to press, and how you know it worked. Everything below runs on the MacBook, from the <code>software/</code> folder, with the ESP32 streaming at <code>172.20.10.5</code>.</p>
+  </header>
+
+  <section class="diagram" id="pipeline" aria-label="Pipeline diagram">
+    <svg viewBox="0 0 900 360" role="img" aria-labelledby="pipe-title">
+      <title id="pipe-title">Pipeline from webcam to distance and bearing output</title>
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-muted"/></marker>
+        <marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-acc"/></marker>
+      </defs>
+
+      <!-- Hardware -->
+      <text x="20" y="24" class="t-m">ON THE ROVER</text>
+      <rect x="20" y="36" width="130" height="62" rx="6" class="s-hw"/>
+      <text x="85" y="62" text-anchor="middle" class="t-b">Logitech webcam</text>
+      <text x="85" y="80" text-anchor="middle" class="t-m">UVC, MJPEG</text>
+      <path d="M150,67 H186" class="s-arrow" marker-end="url(#ah)"/>
+      <text x="168" y="58" text-anchor="middle" class="t-m">OTG</text>
+      <rect x="190" y="36" width="140" height="62" rx="6" class="s-hw"/>
+      <text x="260" y="62" text-anchor="middle" class="t-b">ESP32-S3</text>
+      <text x="260" y="80" text-anchor="middle" class="t-m">app_main.c</text>
+      <path d="M330,67 H420" class="s-arrow" marker-end="url(#ah)"/>
+      <text x="375" y="58" text-anchor="middle" class="t-m">Wi-Fi</text>
+      <text x="375" y="84" text-anchor="middle" class="t-m">/stream</text>
+
+      <!-- Laptop region -->
+      <rect x="420" y="14" width="465" height="336" rx="10" fill="none" class="s-dash"/>
+      <text x="436" y="34" class="t-m">ON THE MACBOOK · software/</text>
+      <rect x="440" y="44" width="170" height="50" rx="6" class="s-box"/>
+      <text x="525" y="66" text-anchor="middle" class="t-b">LatestFrameReader</text>
+      <text x="525" y="83" text-anchor="middle" class="t-m">range_test.py · newest frame</text>
+
+      <!-- one-off branch -->
+      <path d="M525,94 V120 H525" class="s-arrow"/>
+      <path d="M525,120 H700" class="s-arrow"/>
+      <path d="M525,120 V146" class="s-arrow" marker-end="url(#ah)"/>
+      <path d="M700,120 V146" class="s-arrow" marker-end="url(#ah)"/>
+
+      <rect x="440" y="150" width="170" height="62" rx="6" class="s-amb"/>
+      <text x="525" y="172" text-anchor="middle" class="t-b">calibrate.py</text>
+      <text x="525" y="189" text-anchor="middle" class="t-amb">ONCE per camera</text>
+      <text x="525" y="203" text-anchor="middle" class="t-m">chessboard views</text>
+
+      <rect x="440" y="246" width="170" height="44" rx="6" class="s-box"/>
+      <text x="525" y="266" text-anchor="middle" class="t-b">camera_calib.json</text>
+      <text x="525" y="281" text-anchor="middle" class="t-m">fx fy cx cy + distortion</text>
+      <path d="M525,212 V242" class="s-arrow" marker-end="url(#ah)"/>
+
+      <rect x="630" y="150" width="240" height="140" rx="6" class="s-acc"/>
+      <text x="750" y="172" text-anchor="middle" class="t-b">pose_stream.py</text>
+      <text x="750" y="188" text-anchor="middle" class="t-acc">EVERY frame</text>
+      <text x="646" y="212" class="t">1  detect ArUco corners</text>
+      <text x="646" y="232" class="t">2  solvePnP (ITERATIVE)</text>
+      <text x="646" y="252" class="t">3  range, forward, bearing</text>
+      <text x="646" y="272" class="t">4  reproj error, side px</text>
+      <path d="M610,268 H626" class="s-arrow-acc" marker-end="url(#aha)"/>
+      <text x="618" y="300" text-anchor="middle" class="t-m">K, dist</text>
+
+      <!-- inputs -->
+      <rect x="440" y="306" width="170" height="34" rx="6" class="s-box"/>
+      <text x="525" y="327" text-anchor="middle" class="t">--marker-mm  (ruler)</text>
+      <path d="M610,323 H690 V294" class="s-arrow" marker-end="url(#ah)"/>
+
+      <!-- outputs -->
+      <path d="M870,220 H884" class="s-arrow"/>
+      <text x="750" y="316" text-anchor="middle" class="t-m">overlay window · pose_log.csv (s)</text>
+      <text x="750" y="334" text-anchor="middle" class="t-m">next: vision_publisher.py → B1</text>
+    </svg>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--code-bg);border:1px solid var(--muted)"></i>Hardware</span>
+      <span><i class="sw" style="background:var(--amber-soft);border:1px dashed var(--amber)"></i>One-off setup</span>
+      <span><i class="sw" style="background:var(--accent-soft);border:1px solid var(--accent)"></i>Runs live</span>
+    </div>
+  </section>
+
+  <section class="steps" aria-label="Procedure">
+    <h2>Procedure</h2>
+
+    <!-- 0 -->
+    <article class="step">
+      <div class="num">0</div>
+      <div class="body">
+        <div class="where">MacBook · once</div>
+        <h3>Get the files and libraries in place</h3>
+        <ul class="tight">
+          <li>Copy <code>calibrate.py</code>, <code>marker_pose.py</code>, <code>pose_stream.py</code> and <code>range_test.py</code> into the MacBook's <code>software/</code>.</li>
+          <li>Install the libraries: <code>pip install opencv-contrib-python numpy</code> (contrib, for <code>cv2.aruco</code>).</li>
+          <li>Power the ESP32 with the webcam in the OTG port. Close any browser tab on <code>/stream</code>: the board serves only a few connections.</li>
+        </ul>
+        <div class="done"><b>Done when</b> <code>python3 range_test.py</code> prints <code>Stream OK: WxH</code>. Note that resolution; you calibrate at it.</div>
+      </div>
+    </article>
+
+    <!-- 1 -->
+    <article class="step">
+      <div class="num">1</div>
+      <div class="body">
+        <div class="where">MacBook + printer · once</div>
+        <h3>Make the chessboard</h3>
+        <div class="split">
+          <div class="body">
+            <pre>python3 calibrate.py --make-board</pre>
+            <p>Writes <code>chessboard_9x6.png</code>: 10 × 7 squares, which is 9 × 6 <em>inner</em> corners. Print at 100% scale and tape it to card or a clipboard so it stays flat. A tablet showing it full-screen also works; turn the brightness down to avoid glare.</p>
+          </div>
+          <div class="mini">
+            <svg viewBox="0 0 220 160" role="img" aria-label="Chessboard with inner corners marked">
+              <g id="board"></g>
+              <text x="110" y="154" text-anchor="middle" class="t-m">● = inner corner (9 × 6 = 54)</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 2 -->
+    <article class="step">
+      <div class="num">2</div>
+      <div class="body">
+        <div class="where">MacBook + ESP32 stream · once per camera or resolution</div>
+        <h3>Calibrate the camera</h3>
+        <div class="split">
+          <div class="body">
+            <pre>python3 calibrate.py</pre>
+            <ul class="tight">
+              <li>Hold the board in front of the camera. When the corners are drawn in colour and the label says <b>BOARD FOUND</b>, press <kbd>Space</kbd>.</li>
+              <li>Take about 20 views. Cover the whole frame (centre, edges, all four corners), near and far, and tilted about 30° left, right, up and down.</li>
+              <li>Press <kbd>c</kbd> to calibrate and save (needs at least 12). <kbd>q</kbd> quits without saving.</li>
+            </ul>
+            <div class="done"><b>Done when</b> it prints <code>RMS reprojection error</code> below 0.5 px and saves <code>camera_calib.json</code>. From 0.5 to 1.0 is usable; above 1.0, retake with sharper, flatter views.</div>
+            <div class="warn"><b>Redo it</b> if you change the webcam, the stream resolution or its focus. A mismatched resolution with the same aspect ratio is scaled automatically, with a warning.</div>
+          </div>
+          <div class="mini">
+            <svg viewBox="0 0 220 170" role="img" aria-label="Where to place the board across the camera frame">
+              <rect x="10" y="10" width="200" height="120" rx="4" class="s-box"/>
+              <g id="coverage"></g>
+              <text x="110" y="150" text-anchor="middle" class="t-m">camera frame: fill every cell,</text>
+              <text x="110" y="164" text-anchor="middle" class="t-m">tilt some views (slanted boxes)</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 3 -->
+    <article class="step">
+      <div class="num">3</div>
+      <div class="body">
+        <div class="where">Ruler · once per marker print</div>
+        <h3>Measure the printed marker</h3>
+        <div class="split">
+          <div class="body">
+            <p>Measure the side of the marker from the outer edge of the black border to the outer edge on the other side, in millimetres. Leave out the white margin. Distance scales directly with this number: 5 mm wrong on a 100 mm marker means 5% wrong on every distance.</p>
+            <p>Also note the dictionary your markers were printed from. The scripts default to <code>DICT_6X6_250</code>. If nothing is detected, run <code>dict_finder.py</code>.</p>
+          </div>
+          <div class="mini">
+            <svg viewBox="0 0 220 150" role="img" aria-label="Measure the black border, not the white margin">
+              <rect x="40" y="10" width="140" height="110" rx="2" class="f-panel" stroke="var(--line)" stroke-width="1.5"/>
+              <rect x="60" y="20" width="90" height="90" class="f-ink"/>
+              <rect x="75" y="35" width="20" height="20" class="f-panel"/>
+              <rect x="115" y="35" width="20" height="20" class="f-panel"/>
+              <rect x="95" y="55" width="20" height="20" class="f-panel"/>
+              <rect x="75" y="75" width="20" height="20" class="f-panel"/>
+              <rect x="115" y="80" width="20" height="15" class="f-panel"/>
+              <path d="M60,130 H150" class="s-arrow-acc" marker-start="url(#aha)" marker-end="url(#aha)"/>
+              <line x1="60" y1="112" x2="60" y2="136" stroke="var(--accent)" stroke-width="1"/>
+              <line x1="150" y1="112" x2="150" y2="136" stroke="var(--accent)" stroke-width="1"/>
+              <text x="105" y="146" text-anchor="middle" class="t-acc">--marker-mm</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 4 -->
+    <article class="step">
+      <div class="num">4</div>
+      <div class="body">
+        <div class="where">MacBook + ESP32 stream · every session</div>
+        <h3>Run live distance and bearing</h3>
+        <div class="split">
+          <div class="body">
+            <pre>python3 pose_stream.py --marker-mm 100
+# other dictionary:
+python3 pose_stream.py --marker-mm 100 --dict DICT_4X4_50</pre>
+            <p>Each marker gets an outline, 3D axes and a label like <code>ID 7  85.3 cm  +4.2 deg</code>. The terminal prints the same twice a second.</p>
+            <div class="tbl">
+              <table>
+                <tr><th>Field</th><th>Meaning</th></tr>
+                <tr><td>range_mm</td><td>Straight line, lens to marker centre</td></tr>
+                <tr><td>forward_mm</td><td>Depth along the camera's axis only</td></tr>
+                <tr><td>bearing_deg</td><td>0 = dead ahead, + = right, − = left. Camera frame, not rover heading</td></tr>
+                <tr><td>reproj_err_px</td><td>How well the pose fits the corners. Under ~1 px is good</td></tr>
+                <tr><td>side_px</td><td>Marker size in pixels. Small means far and less reliable</td></tr>
+              </table>
+            </div>
+          </div>
+          <div class="mini">
+            <svg viewBox="0 0 220 210" role="img" aria-label="Top view showing range, forward distance and bearing sign">
+              <text x="110" y="14" text-anchor="middle" class="t-m">TOP VIEW</text>
+              <line x1="110" y1="190" x2="110" y2="26" class="s-dash"/>
+              <text x="114" y="34" class="t-m">optical axis (0°)</text>
+              <path d="M110,190 L168,60" class="s-arrow-acc"/>
+              <rect x="156" y="52" width="26" height="8" class="f-ink" transform="rotate(-12 169 56)"/>
+              <text x="186" y="74" class="t-acc">marker</text>
+              <path d="M110,140 A50,50 0 0 1 130,145" class="s-arrow-acc" />
+              <text x="128" y="134" class="t-acc">+θ</text>
+              <text x="146" y="118" class="t-acc" transform="rotate(-66 146 118)">range</text>
+              <line x1="168" y1="60" x2="110" y2="60" class="s-dash"/>
+              <text x="62" y="110" class="t-m" transform="rotate(-90 62 110)">forward</text>
+              <path d="M74,190 V62" class="s-arrow" marker-start="url(#ah)" marker-end="url(#ah)"/>
+              <rect x="96" y="186" width="28" height="16" rx="3" class="s-hw"/>
+              <text x="110" y="198" text-anchor="middle" class="t-m">cam</text>
+              <text x="24" y="150" class="t-m">− left</text>
+              <text x="160" y="150" class="t-m">+ right</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 5 -->
+    <article class="step">
+      <div class="num">5</div>
+      <div class="body">
+        <div class="where">Tape measure + ESP32 stream · for the B1 handoff</div>
+        <h3>Measure the error</h3>
+        <div class="split">
+          <div class="body">
+            <ul class="tight">
+              <li>Mark distances on the floor, for example 50, 100, 150 and 200 cm from the lens, straight ahead.</li>
+              <li>At each one, with <code>pose_stream.py</code> running, press <kbd>s</kbd>, then type the true distance in mm and the true angle.</li>
+              <li>Repeat a few at about ±20° to check bearing. Then repeat in the real arena lighting.</li>
+            </ul>
+            <p>Every press adds a row to <code>pose_log.csv</code> with true vs measured values, plus the reprojection error, pixel size, resolution and marker size.</p>
+            <div class="done"><b>Done when</b> you have a table of error against distance and angle. This is the "measured detection error" B1 asked for, and it tells you the range where readings are trustworthy.</div>
+          </div>
+          <div class="mini">
+            <svg viewBox="0 0 220 170" role="img" aria-label="Test positions at several distances and angles">
+              <rect x="98" y="146" width="24" height="14" rx="3" class="s-hw"/>
+              <text x="110" y="157" text-anchor="middle" class="t-m">cam</text>
+              <line x1="110" y1="146" x2="110" y2="14" class="s-dash"/>
+              <g id="testpts"></g>
+              <text x="8" y="168" class="t-m">● ahead</text>
+              <text x="160" y="168" class="t-amb">● ±20°</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section class="diagram" aria-label="What comes next">
+    <h2>After this</h2>
+    <p style="margin-top:8px">Distance and bearing are now measured, but they only appear on screen. B1's priority-1 list still needs <code>vision_publisher.py</code>: the same readings sent once per frame with <code>frame_seq</code>, timestamps, a <code>plain</code>/<code>junction</code> type from the agreed ID table, a <code>valid</code> flag based on <code>reproj_err_px</code> and <code>side_px</code>, camera health (ok, no marker, stalled, disconnected), and a <code>--record</code> option for replayable samples.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  var NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    parent.appendChild(e); return e;
+  }
+  // Step 1: chessboard 10x7 squares, inner corners marked
+  var b = document.getElementById("board"), sq = 18, ox = 20, oy = 8;
+  for (var r = 0; r < 7; r++) for (var c = 0; c < 10; c++)
+    el("rect", { x: ox + c * sq, y: oy + r * sq, width: sq, height: sq,
+      "class": (r + c) % 2 ? "f-panel" : "f-ink" }, b);
+  el("rect", { x: ox, y: oy, width: 10 * sq, height: 7 * sq, fill: "none", stroke: "var(--line)", "stroke-width": 1 }, b);
+  for (var r2 = 1; r2 < 7; r2++) for (var c2 = 1; c2 < 10; c2++)
+    el("circle", { cx: ox + c2 * sq, cy: oy + r2 * sq, r: 2.6, "class": "f-acc" }, b);
+
+  // Step 2: coverage grid 3x3 + tilted views
+  var g = document.getElementById("coverage");
+  for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) {
+    var x = 18 + j * 64, y = 16 + i * 38;
+    el("rect", { x: x, y: y, width: 56, height: 32, rx: 2, fill: "var(--accent-soft)", stroke: "var(--accent)", "stroke-width": 1.2 }, g);
+  }
+  [[50, 40, -14], [150, 90, 12], [110, 64, 18]].forEach(function (t) {
+    el("rect", { x: t[0] - 22, y: t[1] - 13, width: 44, height: 26, rx: 2, fill: "none",
+      stroke: "var(--amber)", "stroke-width": 1.4, "stroke-dasharray": "3 3",
+      transform: "rotate(" + t[2] + " " + t[0] + " " + t[1] + ")" }, g);
+  });
+
+  // Step 5: test points along axis and at +/-20 deg
+  var tp = document.getElementById("testpts"), cx = 110, cy = 146;
+  [30, 60, 90, 120].forEach(function (d, k) {
+    el("circle", { cx: cx, cy: cy - d, r: 4, "class": "f-acc" }, tp);
+    var t = document.createElementNS(NS, "text");
+    t.setAttribute("x", cx + 8); t.setAttribute("y", cy - d + 4); t.setAttribute("class", "t-m");
+    t.textContent = (50 * (k + 1)) + " cm"; tp.appendChild(t);
+  });
+  [60, 100].forEach(function (d) {
+    [-1, 1].forEach(function (s) {
+      var a = s * 20 * Math.PI / 180;
+      el("circle", { cx: cx + Math.sin(a) * d, cy: cy - Math.cos(a) * d, r: 4, "class": "f-amb" }, tp);
+    });
+  });
+})();
+</script>

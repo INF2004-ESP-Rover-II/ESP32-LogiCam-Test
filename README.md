@@ -62,6 +62,16 @@ ESP-IDF project targeting `esp32s3`. Key files:
   (`debug_gray_*.jpg` from `debug_aruco.py`) against every standard
   ArUco/AprilTag dictionary OpenCV ships and reports which one actually
   decodes your markers. Use this if you switch to a different marker set.
+- **`range_test.py`** - Measures the detection rate and marker size in
+  pixels at distances you type in, to find the maximum reliable range.
+  Logs to `range_results.csv`.
+- **`calibrate.py`** - Guided chessboard calibration of the stream (3x3
+  shot guide drawn over the video). Saves `camera_calib.json`.
+- **`marker_pose.py`** - Turns each marker's corners into distance and
+  bearing (`solvePnP`), optionally relative to the rover's centre.
+  Imported by `pose_stream.py`.
+- **`pose_stream.py`** - Live distance + bearing overlay, with `s` to log
+  measured vs true values to `pose_log.csv`.
 
 ## Prerequisites
 
@@ -105,7 +115,10 @@ ESP-IDF project targeting `esp32s3`. Key files:
    and retry the flash command immediately.
 5. **Wi-Fi credentials are currently hardcoded** in `main/app_main.c`
    (`WIFI_SSID` / `WIFI_PASSWORD`, near the top of the file) - update them
-   there before flashing if you're on a different network.
+   there before flashing if you're on a different network. The board also
+   uses a **static IP**, `172.20.10.5` on an iPhone hotspot (`STATIC_IP`
+   and friends, same place), so the stream URL doesn't change. Comment out
+   `USE_STATIC_IP` to use DHCP on other networks.
    > ⚠️ These are committed in plaintext in this repo's history. Don't rely
    > on this for anything beyond local testing, and rotate the password if
    > this repo is ever made public.
@@ -131,6 +144,27 @@ serial monitor prints after the board connects to Wi-Fi. Press `q` to quit,
 If detection isn't working, run `debug_aruco.py` first to see the live
 "Rejected" count and figure out whether it's a focus/lighting issue or a
 dictionary mismatch.
+
+## Software: distance and bearing
+
+Step-by-step diagram: `docs/pose_workflow.html`.
+
+1. **Calibrate once** per webcam and stream resolution. The committed
+   `camera_calib.json` is for the Logitech webcam at 640x480 (RMS 0.13 px);
+   redo it if the camera, resolution or focus changes.
+   ```
+   python3 calibrate.py --make-board   # chessboard_9x6.png - print it or show it on a tablet
+   python3 calibrate.py                # follow the highlighted cell, SPACE per shot, c to save
+   ```
+2. **Run live**, with the printed marker's black-square side length and the
+   camera lens position relative to the rover's centre:
+   ```
+   python3 pose_stream.py --marker-mm 77 --cam-forward-mm 120 --cam-right-mm 0
+   ```
+   Leave out the `--cam-*` options to measure from the camera lens instead.
+
+Bearing is 0 straight ahead, positive to the right. Rover-centre distance
+is along the floor and assumes the camera is mounted level.
 
 ## Troubleshooting
 
