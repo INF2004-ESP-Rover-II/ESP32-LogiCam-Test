@@ -48,6 +48,17 @@ static const char *TAG = "web_cam";
 #define WIFI_PASSWORD "fml121202"
 
 // ---------------------------------------------------------------------
+// Fixed IP on the hotspot, so the stream URL never changes. These suit an
+// iPhone hotspot (172.20.10.0/28, gateway .1, clients .2-.14); .5 is the address
+// the hotspot gave this board before, so existing scripts keep working.
+// Comment out USE_STATIC_IP to go back to DHCP.
+// ---------------------------------------------------------------------
+#define USE_STATIC_IP
+#define STATIC_IP      ESP_IP4TOADDR(172, 20, 10, 5)
+#define STATIC_GW      ESP_IP4TOADDR(172, 20, 10, 1)
+#define STATIC_NETMASK ESP_IP4TOADDR(255, 255, 255, 240)
+
+// ---------------------------------------------------------------------
 // Latest-frame buffer shared between the UVC callback (producer) and the
 // HTTP handlers (consumers). Protected by a mutex since they run on
 // different tasks/contexts.
@@ -97,11 +108,36 @@ static void camera_frame_cb(uvc_frame_t *frame, void *user_ptr)
 static EventGroupHandle_t wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 
+static esp_netif_t *sta_netif = NULL;
+
+#ifdef USE_STATIC_IP
+// Same approach as ESP-IDF's static_ip example: stop the DHCP client and
+// set the address once associated; esp_netif then posts IP_EVENT_STA_GOT_IP.
+static void set_static_ip(esp_netif_t *netif)
+{
+    esp_err_t err = esp_netif_dhcpc_stop(netif);
+    if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED) {
+        ESP_LOGE(TAG, "Failed to stop DHCP client: %s", esp_err_to_name(err));
+        return;
+    }
+    esp_netif_ip_info_t ip = {
+        .ip = { .addr = STATIC_IP },
+        .gw = { .addr = STATIC_GW },
+        .netmask = { .addr = STATIC_NETMASK },
+    };
+    ESP_ERROR_CHECK(esp_netif_set_ip_info(netif, &ip));
+}
+#endif
+
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                                 int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
+#ifdef USE_STATIC_IP
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED) {
+        set_static_ip(sta_netif);
+#endif
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         ESP_LOGW(TAG, "Wi-Fi disconnected, retrying...");
         esp_wifi_connect();
@@ -118,7 +154,7 @@ static void wifi_init_sta(void)
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
+    sta_netif = esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
