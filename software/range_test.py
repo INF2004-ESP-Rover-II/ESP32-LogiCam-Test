@@ -40,6 +40,8 @@ class LatestFrameReader:
         self.lock = threading.Lock()
         self.frame = None
         self.frame_id = 0
+        self.frame_time = 0.0   # time.time() when the newest frame arrived
+        self.read_time = 0.0    # arrival time of the frame last returned by read_new
         self.running = True
         threading.Thread(target=self._run, daemon=True).start()
 
@@ -54,6 +56,7 @@ class LatestFrameReader:
             with self.lock:
                 self.frame = frame
                 self.frame_id += 1
+                self.frame_time = time.time()
 
     def read_new(self, last_id, timeout=2.0):
         """Wait for a frame newer than last_id."""
@@ -61,6 +64,7 @@ class LatestFrameReader:
         while time.time() < end:
             with self.lock:
                 if self.frame is not None and self.frame_id != last_id:
+                    self.read_time = self.frame_time
                     return self.frame.copy(), self.frame_id
             time.sleep(0.005)
         return None, last_id

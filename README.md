@@ -72,6 +72,12 @@ ESP-IDF project targeting `esp32s3`. Key files:
   Imported by `pose_stream.py`.
 - **`pose_stream.py`** - Live distance + bearing overlay, with `s` to log
   measured vs true values to `pose_log.csv`.
+- **`laptop/vision_publisher.py`** - The marker-observation feed for the rover
+  (ID, type, distance, bearing, validity, timestamps, health), as JSON
+  lines. Fields and proposed arrival rules: `VISION_CONTRACT.md`.
+- **`laptop/replay.py`** / **`laptop/receiver_example.py`** - Play a recorded feed back,
+  and a minimal consumer that drops stale/repeated messages.
+- **`laptop/markers.json`** - Marker ID -> `plain` / `junction`.
 
 ## Prerequisites
 
